@@ -28,7 +28,8 @@ import java.util.*
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private lateinit var sensorManager: SensorManager // Only one is required to manage all sensors.
-    private lateinit var cm: ConnectivityManager // Only one is required to manage all sensors.
+    private lateinit var cm: ConnectivityManager
+    private lateinit var activeNetwork: NetworkInfo
 
     var connectBtn: Button? = null
     var accVals: TextView? = null
@@ -88,13 +89,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                     mqttClient = MqttAndroidClient(applicationContext, serverURI, "kotlin_client")
                     mqttClient.setCallback(object : MqttCallback {
                         override fun messageArrived(topic: String?, message: MqttMessage?) {
-                            fb?.text = "Topic: $topic | Message: ${message.toString()}"
+                            fb?.text = "Topic: $topic | Message: $message"
                         }
 
                         override fun deliveryComplete(token: IMqttDeliveryToken?) {}
 
                         override fun connectionLost(cause: Throwable?) {
-                            fb?.text = "Connection lost ${cause.toString()}"
+                            fb?.text = "Connection lost $cause"
                             mqttConnected = false
                             connectBtn?.text = "Connect"
                         }
@@ -182,7 +183,24 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             x_axis = event.values[0]
             y_axis = event.values[1]
 
-            accVals?.text = "$x_axis, $y_axis"
+            accVals?.text = "${x_axis.toInt()}, ${y_axis.toInt()}"
+            if (mqttConnected) {
+                if (x_axis.toInt() > 0 && y_axis.toInt() > 0) {
+                    publish("test", "B")
+                }
+
+                if (x_axis.toInt() < 0 && y_axis.toInt() > 0) {
+                    publish("test", "Y")
+                }
+
+                if (x_axis.toInt() < 0 && y_axis.toInt() < 0) {
+                    publish("test", "G")
+                }
+
+                if (x_axis.toInt() > 0 && y_axis.toInt() < 0) {
+                    publish("test", "R")
+                }
+            }
         }
     }
 
@@ -211,7 +229,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 }
             })
         } catch (e: MqttException) {
-            e.printStackTrace()
+            fb?.text = "Failed to publish '$msg' to '$topic'."
         }
     }
 
